@@ -78,6 +78,8 @@ This project is set up for hot reloading to make development easier.
 4.  Refresh your browser to see the effects of your changes.
 
 ## Project Structure
+
+```text
 .
 ├── app.py              # The main Flask application and scanner logic
 ├── Dockerfile          # Defines the Docker image
@@ -86,7 +88,6 @@ This project is set up for hot reloading to make development easier.
 ├── .gitignore          # Files and folders ignored by Git
 ├── README.md           # This file
 └── templates/
-├── index.html      # Main page with the input form
-├── layout.html     # Base HTML layout for consistent styling
-└── results_form.html # HTML snippet for displaying scan results and the action button
----
+    ├── index.html      # Main page with the input form
+    ├── layout.html     # Base HTML layout for consistent styling
+    └── results_form.html # HTML snippet for displaying scan results and the action button

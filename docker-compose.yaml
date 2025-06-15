@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  web:
+    # Build the image from the Dockerfile in the current directory
+    build: .
+    # The command to run in development, overriding the Dockerfile's CMD
+    # The --reload flag enables hot reloading
+    command: gunicorn --bind 0.0.0.0:5001 --reload app:app
+    # Map the container's port 5001 to the host's port 5001
+    ports:
+      - "5001:5001"
+    # Mount the current directory on the host to /app in the container
+    volumes:
+      - .:/app

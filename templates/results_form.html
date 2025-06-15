@@ -1,0 +1,14 @@
+<hr>
+<h3>Actions</h3>
+<form action="/execute" method="post">
+    <input type="hidden" name="token" value="{{ request.form.token }}">
+    <input type="hidden" name="gitlab_url" value="{{ request.form.gitlab_url }}">
+    <input type="hidden" name="projects_to_fix" value="{{ projects | tojson }}">
+    
+    {% if projects %}
+        <p>Found <strong>{{ projects|length }}</strong> projects that need a CODEOWNERS file. Click the button below to create the Merge Requests.</p>
+        <button type="submit">Create {{ projects|length }} Merge Request(s)</button>
+    {% else %}
+        <p>No projects require action. All repositories have a CODEOWNERS file.</p>
+    {% endif %}
+</form>

@@ -1,0 +1,5 @@
+# requirements.txt
+flask
+gunicorn
+requests
+gql[all]

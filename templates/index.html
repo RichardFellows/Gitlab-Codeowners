@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h2>Configuration</h2>
+    <p><em>Your configuration values will be saved in your browser's local storage for convenience.</em></p>
+    <form id="scan-form" action="/scan" method="post">
+        <label for="token">GitLab Personal Access Token:</label>
+        <input type="password" id="token" name="token" required>
+        
+        <label for="group">Target Group Path (e.g., my-org/my-team):</label>
+        <input type="text" id="group" name="group" required>
+        
+        <label for="gitlab_url">GitLab URL (leave blank for gitlab.com):</label>
+        <input type="text" id="gitlab_url" name="gitlab_url" placeholder="https://gitlab.com">
+        
+        <button type="submit">Start Scan</button>
+    </form>
+
+    <h2>Scan Progress</h2>
+    <div id="log" class="log-box">
+        Waiting for scan to start...
+    </div>
+
+    <script>
+        const form = document.getElementById('scan-form');
+        const logBox = document.getElementById('log');
+        const tokenInput = document.getElementById('token');
+        const groupInput = document.getElementById('group');
+        const urlInput = document.getElementById('gitlab_url');
+
+        // --- 1. LOAD DATA ON PAGE LOAD ---
+        // This runs as soon as the page is ready.
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check localStorage for each item and populate the form if found.
+            const savedToken = localStorage.getItem('gitlabApiToken');
+            if (savedToken) {
+                tokenInput.value = savedToken;
+            }
+
+            const savedGroup = localStorage.getItem('gitlabGroup');
+            if (savedGroup) {
+                groupInput.value = savedGroup;
+            }
+
+            const savedUrl = localStorage.getItem('gitlabUrl');
+            if (savedUrl) {
+                urlInput.value = savedUrl;
+            }
+        });
+
+        // --- 2. SAVE DATA ON FORM SUBMISSION ---
+        // This listens for when you click the "Start Scan" button.
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Prevent the default form submission behavior.
+
+            // Save the current values to localStorage.
+            localStorage.setItem('gitlabApiToken', tokenInput.value);
+            localStorage.setItem('gitlabGroup', groupInput.value);
+            localStorage.setItem('gitlabUrl', urlInput.value);
+
+            // Now, proceed with the streaming request to the backend.
+            logBox.innerHTML = 'Starting scan...';
+            const response = await fetch('/scan', {
+                method: 'POST',
+                body: new FormData(form)
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            // Clear the log box before streaming new content.
+            logBox.innerHTML = ''; 
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                logBox.innerHTML += decoder.decode(value, { stream: true });
+                logBox.scrollTop = logBox.scrollHeight; // Auto-scroll
+            }
+        });
+    </script>
+{% endblock %}

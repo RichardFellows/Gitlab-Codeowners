@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GitLab CODEOWNERS Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; background: #f4f4f4; }
+        .container { background: #fff; padding: 2em; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; }
+        .log-box { border: 1px solid #ccc; padding: 1em; height: 400px; overflow-y: scroll; background: #222; color: #eee; font-family: monospace; }
+        .log-info { color: #aaa; }
+        .log-success { color: #4CAF50; font-weight: bold; }
+        .log-action { color: #FFC107; font-weight: bold; }
+        .log-error { color: #F44336; font-weight: bold; }
+        input, button { padding: 0.8em; font-size: 1em; width: 100%; margin-bottom: 1em; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GitLab CODEOWNERS Tool</h1>
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

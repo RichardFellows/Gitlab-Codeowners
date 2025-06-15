@@ -91,3 +91,9 @@ This project is set up for hot reloading to make development easier.
     ├── index.html      # Main page with the input form
     ├── layout.html     # Base HTML layout for consistent styling
     └── results_form.html # HTML snippet for displaying scan results and the action button
+
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

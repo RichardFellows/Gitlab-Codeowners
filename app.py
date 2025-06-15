@@ -229,45 +229,53 @@ class GitLabScanner:
             yield f"<div class='log-error'><strong>ERROR during scan:</strong> {e}</div>"
         return projects_to_fix
 
-    def run_fix(self, projects_to_fix):
+    def run_fix(self, projects_to_fix, branch_name, codeowners_template, mr_description):
         yield "<div><strong>Starting MR Creation Process...</strong></div><hr>"
         created_count = 0
         total_mrs_to_create = len(projects_to_fix)
+        
         for i, project in enumerate(projects_to_fix, 1):
             try:
                 yield f"<div class='log-info'>[{i}/{total_mrs_to_create}] Fixing project: {project['name']}</div>"
                 if not project["defaultBranch"]:
                     yield f"<div class='log-error'>&nbsp;&nbsp;-> SKIPPING: Project has an empty repository or no default branch.</div>"
                     continue
+
+                # Get suggested owners and replace placeholder in the template
                 suggested_owners = self.get_suggested_owners(project['fullPath'])
-                yield f"<div class='log-info'>&nbsp;&nbsp;-> Suggested owners: {suggested_owners or ['(none found)'] }</div>"
-                content = DEFAULT_CODEOWNERS_HEADER
-                if suggested_owners:
-                    owner_line = "* " + " ".join([f"@{owner}" for owner in sorted(suggested_owners)])
-                    content += f"\n# Suggested Owners from Recent Activity\n{owner_line}\n"
-                commit_actions = [{"action": "CREATE", "filePath": "CODEOWNERS", "content": content}]
+                owner_string = " ".join([f"@{owner}" for owner in sorted(suggested_owners)])
+                final_content = codeowners_template.replace('{suggested_owners}', owner_string)
+                
+                yield f"<div class='log-info'>&nbsp;&nbsp;-> Suggested owners found: {suggested_owners or ['(none)'] }</div>"
+                yield f"<div class='log-info'>&nbsp;&nbsp;-> Using branch name: '{branch_name}'</div>"
+                
+                commit_actions = [{"action": "CREATE", "filePath": "CODEOWNERS", "content": final_content}]
                 commit_params = {
-                    "projectPath": project["fullPath"], "branch": NEW_BRANCH_NAME,
+                    "projectPath": project["fullPath"], "branch": branch_name, # Use variable
                     "startBranch": project["defaultBranch"], "message": COMMIT_MESSAGE,
                     "actions": commit_actions,
                 }
                 commit_response = self.execute_query(CREATE_COMMIT_MUTATION, commit_params)
                 if commit_response.get("commitCreate", {}).get("errors"):
                     raise Exception(f"Failed to create commit: {commit_response['commitCreate']['errors']}")
+
                 mr_params = {
-                    "projectPath": project["fullPath"], "sourceBranch": NEW_BRANCH_NAME,
+                    "projectPath": project["fullPath"], "sourceBranch": branch_name, # Use variable
                     "targetBranch": project["defaultBranch"], "title": MR_TITLE,
-                    "description": MR_DESCRIPTION,
+                    "description": mr_description,
                 }
                 mr_response = self.execute_query(CREATE_MR_MUTATION, mr_params)
                 if mr_response.get("mergeRequestCreate", {}).get("errors"):
                     raise Exception(f"Failed to create MR: {mr_response['mergeRequestCreate']['errors']}")
+                
                 web_url = mr_response["mergeRequestCreate"]["mergeRequest"]["webUrl"]
                 yield f"<div class='log-success'>&nbsp;&nbsp;-> SUCCESS: MR created at <a href='{web_url}' target='_blank'>{web_url}</a></div>"
                 created_count += 1
             except Exception as e:
                 yield f"<div class='log-error'>&nbsp;&nbsp;-> FAILED for project {project['name']}: {e}</div>"
+
         yield f"<hr><div class='log-success'><strong>Fix Process Complete! Created {created_count} / {total_mrs_to_create} Merge Requests.</strong></div>"
+
 
 # --- 4. Flask Routes ---
 @app.route("/")
@@ -276,24 +284,43 @@ def index():
 
 @app.route("/scan", methods=["POST"])
 def scan():
+    # Retrieve all form data
     token = request.form.get("token")
     group = request.form.get("group")
     gitlab_url = request.form.get("gitlab_url") or "https://gitlab.com"
+    branch_name = request.form.get("branch_name")
+    codeowners_content = request.form.get("codeowners_content")
+    
     scanner = GitLabScanner(gitlab_url, token)
+    
     def generate_scan_output():
         projects_to_fix = yield from scanner.run_scan(group)
+        # Pass the new config values to the results template
         yield render_template("results_form.html", projects=projects_to_fix, 
-                              token=token, gitlab_url=gitlab_url, group=group)
+                              token=token, gitlab_url=gitlab_url, group=group,
+                              branch_name=branch_name, codeowners_content=codeowners_content)
+        
     return Response(stream_with_context(generate_scan_output()), mimetype="text/html")
 
 @app.route("/execute", methods=["POST"])
 def execute():
+    # Retrieve all config from the hidden form fields
     token = request.form.get("token")
     gitlab_url = request.form.get("gitlab_url")
+    branch_name = request.form.get("branch_name")
+    codeowners_content = request.form.get("codeowners_content")
     projects_json = request.form.get("projects_to_fix")
     projects_to_fix = json.loads(projects_json)
+
+    # Use a generic MR description for now
+    mr_description = "This MR adds a CODEOWNERS file to define code ownership."
+
     scanner = GitLabScanner(gitlab_url, token)
-    return Response(stream_with_context(scanner.run_fix(projects_to_fix)), mimetype="text/html")
+    
+    # Call run_fix with the new parameters
+    return Response(stream_with_context(scanner.run_fix(projects_to_fix, branch_name, codeowners_content, mr_description)), mimetype="text/html")
 
 if __name__ == "__main__":
+    # You will need to re-add the full, non-omitted GraphQL queries here
+    # when running this file directly for local debugging without docker-compose.
     app.run(host="0.0.0.0", port=5001, debug=True)
